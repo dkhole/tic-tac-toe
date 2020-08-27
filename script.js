@@ -3,6 +3,10 @@ function hexToG(h) {return parseInt((cutHex(h)).substring(2,4),16)}
 function hexToB(h) {return parseInt((cutHex(h)).substring(4,6),16)}
 function cutHex(h) {return (h.charAt(0)=="#") ? h.substring(1,7):h}
 
+//game board module
+//render draws the board
+//checkwin returns symbol of winner
+//checkdraw returns true when draw occurs
 const gameBoard = (() => {
     const board = [ '', '', '', '', '', '', '', '', ''];
     const render = (board, player1, player2) => {
@@ -45,17 +49,16 @@ const gameBoard = (() => {
         }
     }
     const checkWin = (board, index) => {
-        //get symbol
+        //refractor to return symbol
 
-        const symbol = board[index];
-        let win = false;
+        let symbol = "";
 
         //check all rows
         for(let i = 1; i < 8; i++) {
             if(board[i] != "") {
                 if(board[i-1] === board[i] && board[i] === board[i+1]){
-                    win = true;
-                    return win;
+                    symbol = board[i];
+                    return symbol;
                 }
             }                
             i = i + 2
@@ -64,37 +67,50 @@ const gameBoard = (() => {
         for(let i = 3; i < 6; i++) {
             if(board[i] != "") {
                 if(board[i - 3] == board[i] && board[i] == board[i + 3]) {
-                    win = true;
-                    return win;
+                    symbol = board[i];
+                    return symbol;
                 }
             }
         }
 
         //check diagonals
         if(board[0] != "" && board[0] == board[4] && board[4] == board[8]) {
-
-                win = true;
-                return win;
-            
+            symbol = board[0];
+            return symbol;
         }
 
         if(board[2] != "" && board[2] == board[4] && board[4] == board[6]) {
-
-                win = true;
-                return win;
-            
+            symbol = board[1];
+            return symbol;
         }
         
-        return win;
+        return symbol;
     }
-    return {board, render, checkWin};
+    const checkDraw = (board) => {
+        const emptySquares = [];
+        for(let i = 0; i < 9; i++) {
+            if(board[i] == "") {
+                emptySquares.push(i);
+            }
+        }
+        if(emptySquares.length == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return {board, render, checkWin, checkDraw};
 })();
 
+
+//player object factory
+//compmove returns index for CPU's move depending on existing board
+//color determines color of symbol
 const playerFactory = (name, color) => {
     const compMove = (board) => {
         let turnCount = 0;
         //check all rows cols and diagonals for 2 in a row, if so block/complete
-        //check all rows
+
         //only check if board element isnt empty and row isnt full
         for(let i = 1; i < 8; i++) {
             if(board[i] != "" && !(board[i] != "" && board[i + 1] != "" && board[i - 1] != "")) {
@@ -125,7 +141,7 @@ const playerFactory = (name, color) => {
             }
         }
 
-        //check diagonals   
+        //check diagonals, have to make sure remainder cell isnt empty
         if(board[0] != "" && board[8] == "" && board[0] == board[4]){
             return 8;
         }
@@ -157,13 +173,12 @@ const playerFactory = (name, color) => {
     return {name, color, compMove};
 }
 
-//on every click update array and render board
-//change turn aka symbol on valid turn
-//check for finished game
+//module for game controls
+//block clicks controls the click event listener on each block div
+//toggle CPU controls the state for the grid, swapping between 2player and CPU
 const gameControls = (() => {
     const blockClicks = (player1, player2, gameBoard, turn) => {
-        //adds event listeners to each block
-        //returns true if change has been made
+
         let turned = 0;
         const blocks = document.querySelectorAll(".block");
 
@@ -172,6 +187,7 @@ const gameControls = (() => {
                 const index = parseInt(block.id.slice(-1)) - 1;
                 //update board array and render if array slot is empty
                 if(gameBoard.board[index] == '') {
+                    //CPU state
                     if(player2.name == "CPU") {
 
                         gameBoard.board[index] = "O";
@@ -182,28 +198,41 @@ const gameControls = (() => {
 
                         gameBoard.render(gameBoard.board, player1, player2);
 
-                        if(gameBoard.checkWin(gameBoard.board, index) == true) {
-                            //refractor to show winner
-                            alert("player 1 wins");
+                        if(gameBoard.checkWin(gameBoard.board, index) != "") {
+                            alert(gameBoard.checkWin(gameBoard.board, index) + " wins");
                             window.location.reload(false);
                         } 
-                                               
+
+                        if(gameBoard.checkDraw(gameBoard.board) == true) {
+                            alert("It's a draw");
+                            window.location.reload(false);
+                        }
+                    //2player state           
                     } else {
                         if(turned == 0) {
                             gameBoard.board[index] = "O";
                             gameBoard.render(gameBoard.board, player1, player2);
                             turned++;
-                            if(gameBoard.checkWin(gameBoard.board, index) == true) {
-                                alert("player 1 wins");
+                            if(gameBoard.checkWin(gameBoard.board, index) != "") {
+                                alert(gameBoard.checkWin(gameBoard.board, index) + " wins");
                                 window.location.reload(false);
                             }
                             
+                            if(gameBoard.checkDraw(gameBoard.board) == true) {
+                                alert("It's a draw");
+                                window.location.reload(false);
+                            }
                         } else {
                             gameBoard.board[index] = "X";
                             gameBoard.render(gameBoard.board, player1, player2);
                             turned = 0;
-                            if(gameBoard.checkWin(gameBoard.board, index)) {
-                                alert("player 2 wins");
+                            if(gameBoard.checkWin(gameBoard.board, index) != "") {
+                                alert(gameBoard.checkWin(gameBoard.board, index) + " wins");
+                                window.location.reload(false);
+                            }
+
+                            if(gameBoard.checkDraw(gameBoard.board) == true) {
+                                alert("It's a draw");
                                 window.location.reload(false);
                             }
                         }
@@ -267,9 +296,9 @@ const gameControls = (() => {
     return {blockClicks, toggleCPU};
 })();
 
+//game module to state and initialise
 const game = (() => {
     const start = () => {
-        let turn = 0;
 
         const player1 = playerFactory("player1", document.getElementById("choose-1").value);
         const player2 = playerFactory("player2", document.getElementById("choose-2").value);
